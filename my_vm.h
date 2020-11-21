@@ -46,4 +46,8 @@ void print_TLB_missrate();
 bool check_in_tlb(void *va);
 void put_in_tlb(void *va, void *pa);
 
+void setBit(unsigned long *bit_map, unsigned long bit);
+unsigned long getBit(unsigned long *bit_map, unsigned long bit);
+void removeBit(unsigned long *bit_map, unsigned long bit);
+
 #endif

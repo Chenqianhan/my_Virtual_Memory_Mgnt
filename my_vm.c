@@ -1,19 +1,19 @@
 #include "my_vm.h"
-unsigned pte_t *PGT;
-unsigned pde_t **PGD;
-void *PHYMEM;
-int *phy_bit_map;
-int *vir_bit_map;
-int frame_num;
-int page_num;
+pte_t *PGT;
+pde_t **PGD;
+unsigned long *PHYMEM;
+unsigned long *phy_bit_map;
+unsigned long *vir_bit_map;
+unsigned long frame_num;
+unsigned long page_num;
 
-int isInit = 0;
-int offset_bits;
-int pt_bits;
-int pd_bits;
+unsigned isInit = 0;
+unsigned long offset_bits;
+unsigned long pt_bits; //number of bits in address
+unsigned long pd_bits;
 
-int pt_size;
-int pd_size;
+unsigned long pt_size; //number of entries in each pageTable
+unsigned long pd_size;
 /*
 Function responsible for allocating and setting your physical memory
 */
@@ -28,7 +28,7 @@ void SetPhysicalMem() {
     
     offset_bits = (int)log(PGSIZE)/LOG(2);
     pt_bits = (32 - offset_bits)/2;
-    pd_bits = pt_bits;
+    pd_bits = 32 - pt_bits - offset_bits;
     
     //Actually the exact number of pages is less than the limitation of address.
     //Right here we have 2^20 pages in total which is equivalent to MAX_MEMSIZE/PGSIZE, namely virtual memory.
@@ -37,23 +37,25 @@ void SetPhysicalMem() {
     pd_size = 1<<pd_bits;
     
     //we allocate 2^30bytes = 1GB physical memory
-    PHYMEM = malloc(MEMSIZE);
+    PHYMEM = (unsigned long*)malloc(MEMSIZE);
     
     PGD = (pde_t **)malloc(pd_size * szieof(pde_t));
-    //We don't have to allocate complete pagetable at first.
+
     //We use a vir_bit_map to mark if it is initialized or used.
-    /*
     for(pde_t i=0;i<pd_size;i++){
-        PGD[i] = (pte_t *)malloc(pt_size * sizeof(pte_t));
+        //PGD[i] = (pte_t *)malloc(pt_size * sizeof(pte_t));
+        PGD[i] = NULL;
     }
-    */
     
     //Cuz we have 2^20 pages.
-    page_num = (unsign)MAX_MEMSIZE
-    vir_bit_map = malloc()
+    page_num = (unsigned long)(MAX_MEMSIZE/PGSIZE)/8;
+    vir_bit_map = (unsigned long *)malloc(page_num);
+    memset(vir_bit_map, 0, page_num);
+    
     //Cuz we need (2^30/2^12)bits to mark page frames. And each byte = 8bits.
     frame_num = (unsigned long)(MEMSIZE/PGSIZE)/8;
-    phy_bit_map = malloc(frame_num); //There
+    phy_bit_map = (unsigned long *)malloc(frame_num);
+    memset(phy_bit_map, 0, frame_num);
 }
 
 /*
@@ -64,10 +66,23 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     //HINT: Get the Page directory index (1st level) Then get the
     //2nd-level-page table index using the virtual address.  Using the page
     //directory index and page table index get the physical address
-
-
+    
+    //Decode virtual address
+    unsigned long address = (unsigned long)va;
+    unsigned long offset = address & ((1 << offset_bits)-1);
+    address >> offset_bits;
+    pte_t pt_index = address & ((1<< pt_bits)-1);
+    pde_t pd_index = address >> pt_bits;
+    
     //If translation not successfull
-    return NULL;
+    if(getBit(vir_bit_map, address) == 0){
+        return NULL;
+    }
+    
+    unsigned long pa = (unsigned long)pgdir[pd_index][pt_index];
+    pa |= offset;
+    
+    return (unsigned long *)pa;
 }
 
 
@@ -84,18 +99,86 @@ PageMap(pde_t *pgdir, void *va, void *pa)
     /*HINT: Similar to Translate(), find the page directory (1st level)
     and page table (2nd-level) indices. If no mapping exists, set the
     virtual to physical mapping */
+    unsigned long address = (unsigned long)va;
+    unsigned long offset = address & ((1 << offset_bits)-1);
+    address >> offset_bits;
+    pte_t pt_index = address & ((1<< pt_bits)-1);
+    pde_t pd_index = address >> pt_bits;
+    
+    if(PGD[pd_index] == NULL){
+        PGD[i] = (pte_t *)malloc(pt_size * sizeof(pte_t));
+    }
+    
+    //Means this va is not initialized
+    /*
+    for(int i=0;i<page_num;i++){
+        if(getBit(vir_bit_map, address) == 0){
+     int carry = (pt_index + i)/pt_size;
+     PGD[pd_index+carry][(pt_index+i)%pt_size] = (void *)((pa >> offset_bits) << offset_bits);
+            setBit(vir_bit_map, address+i);
+        }else{
+            for(int j=i-1;j>=0;j--){
+                int c = (pt_index + j)/pt_size;
+                PGD[pd_index+c][(pt_index+j)%pt_size] = NULL;
+                removeBit(vir_bit_map, address+j);
+            }
+            return 0;
+        }
+    }
+    */
+    
+    if(getBit(vir_bit_map, address) == 0){
+        PGD[pd_index][pt_index] = (void *)((pa >> offset_bits) << offset_bits);
+        setBit(vir_bit_map, address);
+        return 1;
+    }
+    
+    //If the virtual address that va point to is already used to map physical map, we return 0;
 
-    return -1;
+    return 0;
 }
 
 
 /*Function that gets the next available page
 */
-void *get_next_avail(int num_pages) {
-
+/*
+void *get_next_avail_phy(int num_pages) {
+    unsigned long *pointer = PHYMEM;
     //Use virtual address bitmap to find the next free page
+    unsigned long template = (1 << num_pages)-1;
+    for(int i = 0; i<frame_num; i++){
+        //Unsure!!!!!!!!
+        if(*phy_bit_map & template > 0){
+            template << 1;
+        }else{
+            return (unsigned long*)(pointer + i*PAGESIZE/4);
+        }
+    }
+    
+    return NULL; //Not enough physical
 }
-
+*/
+void *get_next_avail_vir(int num_pages){
+    //unsigned long *pointer = 0;
+    unsigned long template = (1 << num_pages)-1;
+    for(unsigned long i = 0; i<page_num; i++){
+        if(*vir_bit_map & template == 0){
+            return (unsigned long)i;
+        }
+    }
+    return NULL;
+}
+//Only return the index of frame.
+void *get_next_avail_phy(int num_pages) {
+    
+    unsigned long template = (1 << num_pages)-1;
+    for(unsigned long i = 0; i<frame_num; i++){
+        if(*vir_bit_map & template == 0){
+            return (unsigned long)i;
+        }
+    }
+    return NULL;
+}
 
 /* Function responsible for allocating pages
 and used by the benchmark
@@ -108,6 +191,27 @@ void *myalloc(unsigned int num_bytes) {
    page directory. Next, using get_next_avail(), check if there are free pages. If
    free pages are available, set the bitmaps and map a new page. Note, you will
    have to mark which physical pages are used. */
+    if(!init){
+        SetPhysicalMem();
+        init = 1;
+    }
+    
+    int num_pages = num_bytes/PAGESIZE;
+    if(num_bytes%PAGESIZE > 0) num_pages++;
+    
+    unsigned long frame_index = get_next_avail_phy(num_pages);
+    unsigned long page_index = get_next_avail_vir(num_pages);
+    
+    for(unsigned i=0; i<num_pages; i++){
+        setBit(phy_bit_map, frame_index + i);
+        setBit(vir_bit_map, page_index + i);
+    }
+    
+    unsigned long* pa = (unsigned long *)PHYMEM
+    
+    unsigned
+    
+    
 
     return NULL;
 }
@@ -162,6 +266,27 @@ void MatMult(void *mat1, void *mat2, int size, void *answer) {
     store the result to the "answer array"*/
 
 
+}
+
+void setBit(unsigned long *bit_map, unsigned long bit){
+    unsigned long offset = bit%32;
+    unsigned long frame = bit/32;
+    //
+    bit_map[frame] |= 1 << offset;
+}
+
+unsigned long getBit(unsigned long *bit_map, unsigned long bit){
+    unsigned long offset = bit%32;
+    unsigned long frame = bit/32;
+    
+    return bit_map[frame] & (1 << offset);
+}
+
+void removeBit(unsigned long *bit_map, unsigned long bit){
+    unsigned long offset = bit%32;
+    unsigned long frame = bit/32;
+    
+    bit_map[frame] &= ~(1 << offset);
 }
 
 /*
