@@ -37,7 +37,7 @@ void SetPhysicalMem() {
     pd_size = 1<<pd_bits;
     
     //we allocate 2^30bytes = 1GB physical memory
-    PHYMEM = malloc(MEMSIZE);
+    PHYMEM = (void*)malloc(MEMSIZE);
     
     PGD = (pde_t **)malloc(pd_size * szieof(pde_t));
     //We don't have to allocate complete pagetable at first.
@@ -49,11 +49,14 @@ void SetPhysicalMem() {
     */
     
     //Cuz we have 2^20 pages.
-    page_num = (unsign)MAX_MEMSIZE
-    vir_bit_map = malloc()
+    page_num = (unsigned long)(MAX_MEMSIZE/PGSIZE)/8;
+    vir_bit_map = malloc(page_num);
+    memset(vir_bit_map, 0, page_num);
+    
     //Cuz we need (2^30/2^12)bits to mark page frames. And each byte = 8bits.
     frame_num = (unsigned long)(MEMSIZE/PGSIZE)/8;
-    phy_bit_map = malloc(frame_num); //There
+    phy_bit_map = malloc(frame_num);
+    memset(phy_bit_map, 0, frame_num);
 }
 
 /*
@@ -64,7 +67,7 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     //HINT: Get the Page directory index (1st level) Then get the
     //2nd-level-page table index using the virtual address.  Using the page
     //directory index and page table index get the physical address
-
+    
 
     //If translation not successfull
     return NULL;
