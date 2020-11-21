@@ -50,12 +50,12 @@ void SetPhysicalMem() {
     
     //Cuz we have 2^20 pages.
     page_num = (unsigned long)(MAX_MEMSIZE/PGSIZE)/8;
-    vir_bit_map = malloc(page_num);
+    vir_bit_map = (unsigned long *)malloc(page_num);
     memset(vir_bit_map, 0, page_num);
     
     //Cuz we need (2^30/2^12)bits to mark page frames. And each byte = 8bits.
     frame_num = (unsigned long)(MEMSIZE/PGSIZE)/8;
-    phy_bit_map = malloc(frame_num);
+    phy_bit_map = (unsigned long *)malloc(frame_num);
     memset(phy_bit_map, 0, frame_num);
 }
 
@@ -168,7 +168,26 @@ void MatMult(void *mat1, void *mat2, int size, void *answer) {
 
 }
 
-void setBit()
+void setBit(unsigned long *bit_map, unsigned long bit){
+    int offset = bit%32;
+    int frame = bit/32;
+    
+    bit_map[frame] |= 1 << offset;
+}
+
+int getBit(unsigned long *bit_map, unsigned long bit){
+    int offset = bit%32;
+    int frame = bit/32;
+    
+    return bit_map[frame] & (1 << offset);
+}
+
+void removeBit(unsigned long *bit_map, unsigned long bit){
+    int offset = bit%32;
+    int frame = bit/32;
+    
+    bit_map[frame] &= ~(1 << offset);
+}
 
 /*
  * Part 2: Add a virtual to physical page translation to the TLB.
