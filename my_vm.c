@@ -2,18 +2,18 @@
 unsigned pte_t *PGT;
 unsigned pde_t **PGD;
 void *PHYMEM;
-int *phy_bit_map;
-int *vir_bit_map;
-int frame_num;
-int page_num;
+unsigned long *phy_bit_map;
+unsigned long *vir_bit_map;
+unsigned long frame_num;
+unsigned long page_num;
 
-int isInit = 0;
-int offset_bits;
-int pt_bits;
-int pd_bits;
+unsigned isInit = 0;
+unsigned long offset_bits;
+unsigned long pt_bits;
+unsigned long pd_bits;
 
-int pt_size;
-int pd_size;
+unsigned long pt_size;
+unsigned long pd_size;
 /*
 Function responsible for allocating and setting your physical memory
 */
@@ -28,7 +28,7 @@ void SetPhysicalMem() {
     
     offset_bits = (int)log(PGSIZE)/LOG(2);
     pt_bits = (32 - offset_bits)/2;
-    pd_bits = pt_bits;
+    pd_bits = 32 - pt_bits - offset_bits;
     
     //Actually the exact number of pages is less than the limitation of address.
     //Right here we have 2^20 pages in total which is equivalent to MAX_MEMSIZE/PGSIZE, namely virtual memory.
@@ -70,6 +70,7 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     
 
     //If translation not successfull
+    if()
     return NULL;
 }
 
@@ -166,6 +167,8 @@ void MatMult(void *mat1, void *mat2, int size, void *answer) {
 
 
 }
+
+void setBit()
 
 /*
  * Part 2: Add a virtual to physical page translation to the TLB.
