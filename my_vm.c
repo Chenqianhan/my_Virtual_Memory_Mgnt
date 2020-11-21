@@ -1,7 +1,7 @@
 #include "my_vm.h"
 pte_t *PGT;
 pde_t **PGD;
-unsigned *PHYMEM;
+unsigned long *PHYMEM;
 unsigned long *phy_bit_map;
 unsigned long *vir_bit_map;
 unsigned long frame_num;
@@ -37,7 +37,7 @@ void SetPhysicalMem() {
     pd_size = 1<<pd_bits;
     
     //we allocate 2^30bytes = 1GB physical memory
-    PHYMEM = (void*)malloc(MEMSIZE);
+    PHYMEM = (unsigned long*)malloc(MEMSIZE);
     
     PGD = (pde_t **)malloc(pd_size * szieof(pde_t));
 
@@ -206,6 +206,8 @@ void *myalloc(unsigned int num_bytes) {
         setBit(phy_bit_map, frame_index + i);
         setBit(vir_bit_map, page_index + i);
     }
+    
+    unsigned long* pa = (unsigned long *)PHYMEM
     
     unsigned
     
