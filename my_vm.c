@@ -289,16 +289,19 @@ void MatMult(void *a, void *b, int SIZE, void *answer) {
     getting the values from two matrices, you will perform multiplication and
     store the result to the "answer array"*/
     int address_a = 0, address_b = 0;
+    int* temp_a = malloc(sizeof(int)), temp_b = malloc(sizeof(int));
     for (i = 0; i < SIZE; i++) {
         for (j = 0; j < SIZE; j++) {
             int temp;
             for (int t = 0; t < SIZE; t++) {
                 address_a = (unsigned int) a + ((i * SIZE * sizeof(int))) + (t * sizeof(int));
                 address_b = (unsigned int) b + ((t * SIZE * sizeof(int))) + (j * sizeof(int));
-                int* temp_a = address_a;
+                GetVal(address_a, temp_a, sizeof(int));
+                GetVal(address_b, temp_b, sizeof(int));
+                temp += (*temp_a)*(*temp_b);
             }
-
-            PutVal((void *)address_a * (void *)address_b, &answer, sizeof(int));
+            
+            PutVal(&temp, &answer, sizeof(int));
             //printf("%d ", y);
         }
         //printf("\n");
