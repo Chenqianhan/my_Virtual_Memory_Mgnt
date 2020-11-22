@@ -26,7 +26,7 @@ void SetPhysicalMem() {
     //HINT: Also calculate the number of physical and virtual pages and allocate
     //virtual and physical bitmaps and initialize them
     
-    offset_bits = (int)log(PGSIZE)/LOG(2);
+    offset_bits = (int)log(PGSIZE)/log(2);
     pt_bits = (32 - offset_bits)/2;
     pd_bits = 32 - pt_bits - offset_bits;
     
@@ -128,6 +128,8 @@ PageMap(pde_t *pgdir, void *va, void *pa)
     */
     
     if(getBit(vir_bit_map, address) == 0){
+        //---------------------
+        //PGD[pd_index][pt_index] = (void *)pa;
         PGD[pd_index][pt_index] = (void *)((pa >> offset_bits) << offset_bits);
         setBit(vir_bit_map, address);
         return 1;
@@ -207,13 +209,19 @@ void *myalloc(unsigned int num_bytes) {
         setBit(vir_bit_map, page_index + i);
     }
     
-    unsigned long* pa = (unsigned long *)PHYMEM
+    unsigned long* pa = (unsigned long *)(PHYMEM + frame_index*1024);
+    unsigned long offset = (unsigned long)pa & ((1<<offset_bits)-1);
     
-    unsigned
+    unsigned pd_index = page_index/pt_size;
+    unsigned pt_index = page_index%pt_size;
+    unsigned long va = pd_index << pt_bits;
+    va |= pt_index;
+    va << offset_bits;
+    va |= offset;
     
-    
+    if(PageMap(PGD, (unsigned long*)va, pa) == 0) return NULL:
 
-    return NULL;
+    return (unsigned long*)va;
 }
 
 /* Responsible for releasing one or more memory pages using virtual address (va)
@@ -223,6 +231,22 @@ void myfree(void *va, int size) {
     //Free the page table entries starting from this virtual address (va)
     // Also mark the pages free in the bitmap
     //Only free if the memory from "va" to va+size is valid
+    unsigned long* pa = (unsigned long*)Translate(PGD, va);
+    int num_pages = size/PAGESIZE;
+    if(size%PAGESIZE > 0) num_pages++;
+    
+    for(int i=0;i<frame_num;i++){
+        if((unsigned long)PHYMEM + i*1024 == (unsigned long)pa){
+            for(int j=0;j<num_pages;j++){
+                removeBit(phy_bit_map, i+j);
+            }
+        }
+    }
+    
+    unsigned long index = (unsigned long)va >> offset_bits;
+    for(int j=0;j<num_pages;j++){
+        removeBit(vir_bit_map, index+j);
+    }
 }
 
 
@@ -235,7 +259,7 @@ void PutVal(void *va, void *val, int size) {
        the contents of "val" to a physical page. NOTE: The "size" value can be larger
        than one page. Therefore, you may have to find multiple pages using Translate()
        function.*/
-
+    memcpy((unsigned long *)translate(PGD, va), val, size);
 }
 
 
@@ -247,7 +271,7 @@ void GetVal(void *va, void *val, int size) {
     If you are implementing TLB,  always check first the presence of translation
     in TLB before proceeding forward */
 
-
+    memcpy(val, (unsigned long *)translate(PGD, va), size);
 }
 
 
