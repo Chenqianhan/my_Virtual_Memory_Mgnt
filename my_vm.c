@@ -49,15 +49,13 @@ void SetPhysicalMem() {
     
     //Cuz we have 2^20 pages.
     page_num = (unsigned long)(MAX_MEMSIZE/PGSIZE);
-    //since malloc allocate memory based on byte, that's why we divide 8
     vir_bit_map = (unsigned long *)malloc(page_num/8);
-    //memset(vir_bit_map, 0, page_num/8);
+    //memset(vir_bit_map, 0, page_num);
     
     //Cuz we need (2^30/2^12)bits to mark page frames. And each byte = 8bits.
     frame_num = (unsigned long)(MEMSIZE/PGSIZE);
-    //since malloc allocate memory based on byte, that's why we divide 8
     phy_bit_map = (unsigned long *)malloc(frame_num/8);
-    //memset(phy_bit_map, 0, frame_num/8);
+    //memset(phy_bit_map, 0, frame_num);
 }
 
 /*
@@ -76,14 +74,15 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     unsigned long pt_index = address & ((1<< pt_bits)-1);
     unsigned long pd_index = address >> pt_bits;
     
-    //If translation not successful
+    //If translation not successfull
     if(getBit(vir_bit_map, address) == 0){
         return NULL;
     }
-    unsigned long pa = (unsigned long) pgdir[pd_index][pt_index];
+    
+    unsigned long pa = (unsigned long)pgdir[pd_index][pt_index];
     pa |= offset;
     
-    return (unsigned long *)pa;
+    return (pte_t *)pa;
 }
 
 
@@ -127,7 +126,7 @@ PageMap(pde_t *pgdir, void *va, void *pa)
         }
     }
     */
-    //################################
+    
     if(getBit(vir_bit_map, address) == 0){
         //---------------------
         //PGD[pd_index][pt_index] = (void *)pa;
