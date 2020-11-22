@@ -335,6 +335,7 @@ void MatMult(void *mat1, void *mat2, int size, void *answer) {
 
 }
 
+// (virtual_address - 0)/PGSIZE = THE FIRST (32 - OFFSETS_BITS)
 void setBit(unsigned long *bit_map, unsigned long bit){
     unsigned long offset = bit%32;
     unsigned long frame = bit/32;
@@ -342,6 +343,7 @@ void setBit(unsigned long *bit_map, unsigned long bit){
     bit_map[frame] |= 1 << offset;
 }
 
+// (physical_address - physical_starting)/PGSIZE
 unsigned long getBit(unsigned long *bit_map, unsigned long bit){
     unsigned long offset = bit%32;
     unsigned long frame = bit/32;
