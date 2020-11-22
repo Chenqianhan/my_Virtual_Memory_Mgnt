@@ -281,14 +281,28 @@ This function receives two matrices mat1 and mat2 as an argument with size
 argument representing the number of rows and columns. After performing matrix
 multiplication, copy the result to answer.
 */
-void MatMult(void *mat1, void *mat2, int size, void *answer) {
+void MatMult(void *a, void *b, int SIZE, void *answer) {
 
     /* Hint: You will index as [i * size + j] where  "i, j" are the indices of the
     matrix accessed. Similar to the code in test.c, you will use GetVal() to
     load each element and perform multiplication. Take a look at test.c! In addition to
     getting the values from two matrices, you will perform multiplication and
     store the result to the "answer array"*/
+    int address_a = 0, address_b = 0;
+    for (i = 0; i < SIZE; i++) {
+        for (j = 0; j < SIZE; j++) {
+            int temp;
+            for (int t = 0; t < SIZE; t++) {
+                address_a = (unsigned int) a + ((i * SIZE * sizeof(int))) + (t * sizeof(int));
+                address_b = (unsigned int) b + ((t * SIZE * sizeof(int))) + (j * sizeof(int));
+                int* temp_a = address_a;
+            }
 
+            PutVal((void *)address_a * (void *)address_b, &answer, sizeof(int));
+            //printf("%d ", y);
+        }
+        //printf("\n");
+    }
 
 }
 
