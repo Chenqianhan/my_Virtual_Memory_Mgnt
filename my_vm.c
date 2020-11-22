@@ -26,7 +26,7 @@ void SetPhysicalMem() {
     //HINT: Also calculate the number of physical and virtual pages and allocate
     //virtual and physical bitmaps and initialize them
     
-    offset_bits = (int)log(PGSIZE)/log(2);
+    offset_bits = (unsigned long)(log(PGSIZE)/log(2));
     pt_bits = (32 - offset_bits)/2;
     pd_bits = 32 - pt_bits - offset_bits;
     
@@ -39,10 +39,10 @@ void SetPhysicalMem() {
     //we allocate 2^30bytes = 1GB physical memory
     PHYMEM = (unsigned long*)malloc(MEMSIZE);
     
-    PGD = (pde_t **)malloc(pd_size * szieof(pde_t));
+    PGD = (pde_t **)malloc(pd_size * sizeof(pde_t));
 
     //We use a vir_bit_map to mark if it is initialized or used.
-    for(pde_t i=0;i<pd_size;i++){
+    for(unsigned long i=0;i<pd_size;i++){
         //PGD[i] = (pte_t *)malloc(pt_size * sizeof(pte_t));
         PGD[i] = NULL;
     }
@@ -71,8 +71,8 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     unsigned long address = (unsigned long)va;
     unsigned long offset = address & ((1 << offset_bits)-1);
     address >> offset_bits;
-    pte_t pt_index = address & ((1<< pt_bits)-1);
-    pde_t pd_index = address >> pt_bits;
+    unsigned long pt_index = address & ((1<< pt_bits)-1);
+    unsigned long pd_index = address >> pt_bits;
     
     //If translation not successfull
     if(getBit(vir_bit_map, address) == 0){
@@ -102,11 +102,11 @@ PageMap(pde_t *pgdir, void *va, void *pa)
     unsigned long address = (unsigned long)va;
     unsigned long offset = address & ((1 << offset_bits)-1);
     address >> offset_bits;
-    pte_t pt_index = address & ((1<< pt_bits)-1);
-    pde_t pd_index = address >> pt_bits;
+    unsigned long pt_index = address & ((1<< pt_bits)-1);
+    unsigned long pd_index = address >> pt_bits;
     
     if(PGD[pd_index] == NULL){
-        PGD[i] = (pte_t *)malloc(pt_size * sizeof(pte_t));
+        PGD[pd_index] = (pte_t *)malloc(pt_size * sizeof(pte_t));
     }
     
     //Means this va is not initialized
@@ -130,7 +130,7 @@ PageMap(pde_t *pgdir, void *va, void *pa)
     if(getBit(vir_bit_map, address) == 0){
         //---------------------
         //PGD[pd_index][pt_index] = (void *)pa;
-        PGD[pd_index][pt_index] = (void *)((pa >> offset_bits) << offset_bits);
+        PGD[pd_index][pt_index] = ((unsigned long)pa >> offset_bits) << offset_bits;
         setBit(vir_bit_map, address);
         return 1;
     }
@@ -193,13 +193,13 @@ void *myalloc(unsigned int num_bytes) {
    page directory. Next, using get_next_avail(), check if there are free pages. If
    free pages are available, set the bitmaps and map a new page. Note, you will
    have to mark which physical pages are used. */
-    if(!init){
+    if(!isInit){
         SetPhysicalMem();
-        init = 1;
+        isInit = 1;
     }
     
-    int num_pages = num_bytes/PAGESIZE;
-    if(num_bytes%PAGESIZE > 0) num_pages++;
+    int num_pages = num_bytes/PGSIZE;
+    if(num_bytes%PGSIZE > 0) num_pages++;
     
     unsigned long frame_index = get_next_avail_phy(num_pages);
     unsigned long page_index = get_next_avail_vir(num_pages);
@@ -219,7 +219,7 @@ void *myalloc(unsigned int num_bytes) {
     va << offset_bits;
     va |= offset;
     
-    if(PageMap(PGD, (unsigned long*)va, pa) == 0) return NULL:
+    if(PageMap(PGD, (unsigned long*)va, pa) == 0) return NULL;
 
     return (unsigned long*)va;
 }
@@ -232,8 +232,8 @@ void myfree(void *va, int size) {
     // Also mark the pages free in the bitmap
     //Only free if the memory from "va" to va+size is valid
     unsigned long* pa = (unsigned long*)Translate(PGD, va);
-    int num_pages = size/PAGESIZE;
-    if(size%PAGESIZE > 0) num_pages++;
+    int num_pages = size/PGSIZE;
+    if(size%PGSIZE > 0) num_pages++;
     
     for(int i=0;i<frame_num;i++){
         if((unsigned long)PHYMEM + i*1024 == (unsigned long)pa){
@@ -259,7 +259,7 @@ void PutVal(void *va, void *val, int size) {
        the contents of "val" to a physical page. NOTE: The "size" value can be larger
        than one page. Therefore, you may have to find multiple pages using Translate()
        function.*/
-    memcpy((unsigned long *)translate(PGD, va), val, size);
+    memcpy((unsigned long *)Translate(PGD, va), val, size);
 }
 
 
@@ -271,7 +271,7 @@ void GetVal(void *va, void *val, int size) {
     If you are implementing TLB,  always check first the presence of translation
     in TLB before proceeding forward */
 
-    memcpy(val, (unsigned long *)translate(PGD, va), size);
+    memcpy(val, (unsigned long *)Translate(PGD, va), size);
 }
 
 
@@ -281,24 +281,26 @@ This function receives two matrices mat1 and mat2 as an argument with size
 argument representing the number of rows and columns. After performing matrix
 multiplication, copy the result to answer.
 */
-void MatMult(void *a, void *b, int SIZE, void *c) {
-
+//void MatMult(void *a, void *b, int SIZE, void *c) {
+void MatMult(void *mat1, void *mat2, int size, void *answer) {
     /* Hint: You will index as [i * size + j] where  "i, j" are the indices of the
     matrix accessed. Similar to the code in test.c, you will use GetVal() to
     load each element and perform multiplication. Take a look at test.c! In addition to
     getting the values from two matrices, you will perform multiplication and
     store the result to the "answer array"*/
+    
+    /*
     int address_a = 0, address_b = 0, address_c = 0;
     int* temp_a = malloc(sizeof(int)), temp_b = malloc(sizeof(int));
-    for (i = 0; i < SIZE; i++) {
-        for (j = 0; j < SIZE; j++) {
-            int temp;
+    for (int i = 0; i < SIZE; i++) {
+        for (int j = 0; j < SIZE; j++) {
+            int temp = 0;
             for (int t = 0; t < SIZE; t++) {
                 address_a = (unsigned int) a + ((i * SIZE * sizeof(int))) + (t * sizeof(int));
                 address_b = (unsigned int) b + ((t * SIZE * sizeof(int))) + (j * sizeof(int));
                 GetVal(address_a, temp_a, sizeof(int));
                 GetVal(address_b, temp_b, sizeof(int));
-                temp += (*temp_a)*(*temp_b);
+                temp += (*temp_a) * (*temp_b);
             }
             address_c = (unsigned int) c + ((i * SIZE * sizeof(int))) + (j * sizeof(int));
             PutVal(&temp, &address_c, sizeof(int));
@@ -306,6 +308,30 @@ void MatMult(void *a, void *b, int SIZE, void *c) {
         }
         //printf("\n");
     }
+     */
+    int sum = 0;
+        int m1 = 0, m2 = 0, ans = 0;
+        int a, b;
+        int i, j, k;
+        for(i = 0; i < size; i++ ){
+            for(j = 0; j < size; j++){
+                sum = 0;
+                for(k = 0; k < size; k++){
+                    /*Get address of next value in matrices*/
+                    m1 = (unsigned int)mat1 + ((i * size * sizeof(int)) + (k * sizeof(int)));
+                    m2 = (unsigned int)mat2 + ((k * size * sizeof(int)) + (j * sizeof(int)));
+                    /*Get value from address in matrices*/
+                    GetVal((void*)m1, &a, sizeof(int));
+                    GetVal((void*)m2, &b, sizeof(int));
+                    
+                    sum += a * b;
+                }
+                /*Get address of answer matrix*/
+                ans = (unsigned int)answer + ((i * size * sizeof(int)) + (j * sizeof(int)));
+                /*Store sum in answer matrix*/
+                PutVal((void*)ans, &sum, sizeof(int));
+            }
+        }
 
 }
 
@@ -334,42 +360,49 @@ void removeBit(unsigned long *bit_map, unsigned long bit){
  * Part 2: Add a virtual to physical page translation to the TLB.
  * Feel free to extend the function arguments or return type.
  */
+/*Part 2 HINT: Add a virtual to physical page translation to the TLB */
+/*
 int
 add_TLB(void *va, void *pa)
 {
 
-    /*Part 2 HINT: Add a virtual to physical page translation to the TLB */
 
     return -1;
 }
-
+*/
 
 /*
  * Part 2: Check TLB for a valid translation.
  * Returns the physical page address.
  * Feel free to extend this function and change the return type.
  */
+/* Part 2: TLB lookup code here */
+/*
 pte_t *
 check_TLB(void *va) {
 
-    /* Part 2: TLB lookup code here */
+    
 
 }
-
+*/
 
 /*
  * Part 2: Print TLB miss rate.
  * Feel free to extend the function arguments or return type.
  */
+
+/*Part 2 Code here to calculate and print the TLB miss rate*/
+/*
 void
 print_TLB_missrate()
 {
     double miss_rate = 0;
 
-    /*Part 2 Code here to calculate and print the TLB miss rate*/
+    
 
 
 
 
     fprintf(stderr, "TLB miss rate %lf \n", miss_rate);
 }
+*/

@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 //Assume the address space is 32 bits, so the max memory size is 4GB
 //Page size is 4KB
@@ -17,14 +18,15 @@
 #define MEMSIZE 1024*1024*1024
 
 // Represents a page table entry
-typedef unsigned void* pte_t;
+typedef void* pte_t;
 
 // Represents a page directory entry
-typedef unsigned pte_t* pde_t;
+typedef pte_t* pde_t;
 
 #define TLB_SIZE 120
 
 //Structure to represents TLB
+/*
 struct tlb {
 
     //Assume your TLB is a direct mapped TLB of TBL_SIZE (entries)
@@ -32,7 +34,7 @@ struct tlb {
     //Assume each bucket to be 4 bytes
 };
 struct tlb tlb_store;
-
+*/
 
 void SetPhysicalMem(); //mmap -> size, (id, start address),
 pte_t* Translate(pde_t *pgdir, void *va);
