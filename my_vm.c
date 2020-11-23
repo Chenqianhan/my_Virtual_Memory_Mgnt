@@ -52,11 +52,13 @@ void SetPhysicalMem() {
     
     //Cuz we have 2^20 pages.
     page_num = (unsigned long)(MAX_MEMSIZE/PGSIZE);
+    //since malloc use byte as input, so we need to divide 8;
     vir_bit_map = (unsigned long *)malloc(page_num/8);
     //memset(vir_bit_map, 0, page_num);
     
     //Cuz we need (2^30/2^12)bits to mark page frames. And each byte = 8bits.
     frame_num = (unsigned long)(MEMSIZE/PGSIZE);
+    //since malloc use byte as input, so we need to divide 8;
     phy_bit_map = (unsigned long *)malloc(frame_num/8);
     //memset(phy_bit_map, 0, frame_num);
 }
@@ -328,17 +330,20 @@ void PutVal(void *va, void *val, int size) {
         memcpy((unsigned long *)Translate(PGD, va), val, size);
         return;
     } else {
-        memcpy((unsigned long *)Translate(PGD, va), val, PGSIZE -  va_offset);
+        unsigned long starting_address_va = (unsigned long) va;
+        unsigned long starting_address_val = (unsigned long) val;
+        memcpy((unsigned long *)Translate(PGD, starting_address_va), starting_address_val, PGSIZE -  va_offset);
         size -= PGSIZE -  va_offset;
-        
+        starting_address_val += PGSIZE - va_offset;
         while (size >= PGSIZE) {
-            va = (va>> offset_bits + 1) << offset_bits;
-            memcpy((unsigned long *)Translate(PGD, va), val, PGSIZE);
+            starting_address_va = ((starting_address_va>> offset_bits) + 1) << offset_bits;
+            memcpy((unsigned long *)Translate(PGD, starting_address_va), starting_address_val, PGSIZE);
             size -= PGSIZE;
+            starting_address_val += PGSIZE;
         }
         if (size > 0) {
-            va = (va>> offset_bits + 1) << offset_bits;
-            memcpy((unsigned long *)Translate(PGD, va), val, size);
+            starting_address_va = ((starting_address_va>> offset_bits) + 1) << offset_bits;
+            memcpy((unsigned long *)Translate(PGD, starting_address_va), starting_address_val, size);
         }
         return;
     }
@@ -363,18 +368,20 @@ void GetVal(void *va, void *val, int size) {
         memcpy(val, (unsigned long *)Translate(PGD, va), size);
         return;
     } else {
-        memcpy(val, (unsigned long *)Translate(PGD, va), PGSIZE -  va_offset);
+        unsigned long starting_address_va = (unsigned long) va;
+        unsigned long starting_address_val = (unsigned long) val;
+        memcpy(starting_address_val, (unsigned long *)Translate(PGD, starting_address_va), PGSIZE -  va_offset);
         size -= PGSIZE -  va_offset;
-        val += PGSIZE -  va_offset;
+        starting_address_val += PGSIZE -  va_offset;
         while (size >= PGSIZE) {
-            va = (va>> offset_bits + 1) << offset_bits;
-            memcpy(val, (unsigned long *)Translate(PGD, va), PGSIZE);
-            val += PGSIZE;
+            starting_address_va = ((starting_address_va>> offset_bits) + 1) << offset_bits;
+            memcpy(starting_address_val, (unsigned long *)Translate(PGD, starting_address_va), PGSIZE);
             size -= PGSIZE;
+            starting_address_val += PGSIZE;
         }
         if (size > 0) {
-            va = (va>> offset_bits + 1) << offset_bits;
-            memcpy(val, (unsigned long *)Translate(PGD, va), size);
+            starting_address_va = ((starting_address_va>> offset_bits) + 1) << offset_bits;
+            memcpy(starting_address_val, (unsigned long *)Translate(PGD, starting_address_va),size);
         }
         return;
     }
