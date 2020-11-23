@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+
 #include "../my_vm.h"
 
 #define SIZE 5
@@ -19,10 +20,14 @@ int main() {
     int address_c = 0;
 
     printf("Addresses of the allocations: %x, %x, %x\n", (int)a, (int)b, (int)c);
+    printf("This is the va a: %lu \n", (unsigned long)a);
+    printf("This is the va b: %lu \n", (unsigned long)b);
 
     printf("Storing integers to generate a SIZExSIZE matrix\n");
     for (i = 0; i < SIZE; i++) {
+        printf("This is the %d in first loop\n", i);
         for (j = 0; j < SIZE; j++) {
+            printf("This is the %d in second loop\n", j);
             address_a = (unsigned int)a + ((i * SIZE * sizeof(int))) + (j * sizeof(int));
             address_b = (unsigned int)b + ((i * SIZE * sizeof(int))) + (j * sizeof(int));
             PutVal((void *)address_a, &x, sizeof(int));

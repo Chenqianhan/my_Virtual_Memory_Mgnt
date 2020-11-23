@@ -70,17 +70,18 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     //Decode virtual address
     unsigned long address = (unsigned long)va;
     unsigned long offset = address & ((1 << offset_bits)-1);
-    address >> offset_bits;
+    address = address >> offset_bits;
     unsigned long pt_index = address & ((1<< pt_bits)-1);
     unsigned long pd_index = address >> pt_bits;
     
     //If translation not successfull
     if(getBit(vir_bit_map, address) == 0){
+        printf("No such bit for this va");
         return NULL;
     }
     
     unsigned long pa = (unsigned long)pgdir[pd_index][pt_index];
-    pa |= offset;
+    pa += offset;
     
     return (pte_t *)pa;
 }
@@ -101,7 +102,7 @@ PageMap(pde_t *pgdir, void *va, void *pa)
     virtual to physical mapping */
     unsigned long address = (unsigned long)va;
     unsigned long offset = address & ((1 << offset_bits)-1);
-    address >> offset_bits;
+    address = address >> offset_bits;
     unsigned long pt_index = address & ((1<< pt_bits)-1);
     unsigned long pd_index = address >> pt_bits;
     
@@ -212,15 +213,21 @@ void *get_next_avail(int num_pages){
         if(i == frame_num) return NULL;
     }
     
-    //virtual_start *= PGSIZE;
+    virtual_start *= PGSIZE;
     for(int i=0;i<num_pages;i++){
-        unsigned long va = (virtual_start + i)*PGSIZE;
+        unsigned long va = virtual_start + i*PGSIZE;
         unsigned long pa = (unsigned long)PHYMEM + phy_candidate[i]*PGSIZE;
+        //unsigned long phy_offset = pa & ((1<<offset_bits)-1);
+        //va |= phy_offset;
         if(PageMap(PGD, (void *)va, (void*)pa) == 0) return NULL;
-        setBit(vir_bit_map, virtual_start+i);
+        setBit(vir_bit_map, (virtual_start >> offset_bits)+i);
         setBit(phy_bit_map, phy_candidate[i]);
+        
+        //printf("Page Maping: va=%lu, pa=%lu\n",va,pa);
     }
-    
+    /*
+    virtual_start |= ((unsigned long)PHYMEM + phy_candidate[0]*PGSIZE) & ((1<<offset_bits)-1);
+    */
     return virtual_start;
 }
 
@@ -312,6 +319,7 @@ void PutVal(void *va, void *val, int size) {
        the contents of "val" to a physical page. NOTE: The "size" value can be larger
        than one page. Therefore, you may have to find multiple pages using Translate()
        function.*/
+    //printf("Translation pa: %lu\n", (unsigned long)Translate(PGD, va));
     memcpy((unsigned long *)Translate(PGD, va), val, size);
 }
 
