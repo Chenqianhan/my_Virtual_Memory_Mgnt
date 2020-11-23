@@ -15,7 +15,7 @@ unsigned long pd_bits;
 unsigned long pt_size; //number of entries in each pageTable
 unsigned long pd_size;
 
-pthread_mutex_t mytex;
+pthread_mutex_t mutex;
 
 /*
 Function responsible for allocating and setting your physical memory
@@ -39,6 +39,11 @@ void SetPhysicalMem() {
     pt_size = 1<<pt_bits; //pt_size*pd_size==MAX_MEMSIZE/PGSIZE
     pd_size = 1<<pd_bits;
     
+    if(pthread_mutex_init(&mutex, NULL) != 0){
+            printf("Error initializing mutex: %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+    }
+    pthread_mutex_lock(&mutex);
     //we allocate 2^30bytes = 1GB physical memory
     PHYMEM = (unsigned long*)malloc(MEMSIZE);
     
@@ -61,6 +66,8 @@ void SetPhysicalMem() {
     //since malloc use byte as input, so we need to divide 8;
     phy_bit_map = (unsigned long *)malloc(frame_num/8);
     //memset(phy_bit_map, 0, frame_num);
+    
+    pthread_mutex_unlock(&mutex);
 }
 
 /*
@@ -79,11 +86,14 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     unsigned long pt_index = address & ((1<< pt_bits)-1);
     unsigned long pd_index = address >> pt_bits;
     
+    pthread_mutex_lock(&mutex);
     //If translation not successfull
     if(getBit(vir_bit_map, address) == 0){
-        printf("No such bit for this va");
+        //printf("No such bit for this va");
+        pthread_mutex_unlock(&mutex);
         return NULL;
     }
+    pthread_mutex_unlock(&mutex);
     
     unsigned long pa = (unsigned long)pgdir[pd_index][pt_index];
     pa += offset;
@@ -111,6 +121,7 @@ PageMap(pde_t *pgdir, void *va, void *pa)
     unsigned long pt_index = address & ((1<< pt_bits)-1);
     unsigned long pd_index = address >> pt_bits;
     
+    pthread_mutex_lock(&mutex);
     if(PGD[pd_index] == NULL){
         PGD[pd_index] = (pte_t *)malloc(pt_size * sizeof(pte_t));
     }
@@ -139,9 +150,10 @@ PageMap(pde_t *pgdir, void *va, void *pa)
         
         //PGD[pd_index][pt_index] = ((unsigned long)pa >> offset_bits) << offset_bits;
         //setBit(vir_bit_map, address);
+        pthread_mutex_unlock(&mutex);
         return 1;
     }
-    
+    pthread_mutex_unlock(&mutex);
     //If the virtual address that va point to is already used to map physical map, we return 0;
 
     return 0;
@@ -167,6 +179,8 @@ void *get_next_avail_phy(int num_pages) {
     return NULL; //Not enough physical
 }
 */
+
+/*
 void *get_next_avail_vir(int num_pages){
     //unsigned long *pointer = 0;
     unsigned long template = (1 << num_pages)-1;
@@ -188,11 +202,14 @@ void *get_next_avail_phy(int num_pages) {
     }
     return NULL;
 }
+*/
 
 void *get_next_avail(int num_pages){
     //unsigned long template = (1 << num_pages) - 1;
     unsigned long virtual_start = 0;
     int cnt = 0;
+    pthread_mutex_lock(&mutex);
+    
     for(unsigned long i = 0; i<page_num; i++){
         if(getBit(vir_bit_map, i) == 0) cnt++;
         else{
@@ -205,6 +222,7 @@ void *get_next_avail(int num_pages){
         }
         
         if(i == page_num - num_pages){
+            pthread_mutex_unlock(&mutex);
             return NULL;
         }
     }
@@ -215,7 +233,10 @@ void *get_next_avail(int num_pages){
         if(getBit(phy_bit_map, i) == 0) phy_candidate[cnt++] = i;
         
         if(cnt == num_pages) break;
-        if(i == frame_num) return NULL;
+        if(i == frame_num){
+            pthread_mutex_unlock(&mutex);
+            return NULL;
+        }
     }
     
     virtual_start *= PGSIZE;
@@ -224,12 +245,16 @@ void *get_next_avail(int num_pages){
         unsigned long pa = (unsigned long)PHYMEM + phy_candidate[i]*PGSIZE;
         //unsigned long phy_offset = pa & ((1<<offset_bits)-1);
         //va |= phy_offset;
-        if(PageMap(PGD, (void *)va, (void*)pa) == 0) return NULL;
+        if(PageMap(PGD, (void *)va, (void*)pa) == 0){
+            pthread_mutex_unlock(&mutex);
+            return NULL;
+        }
         setBit(vir_bit_map, (virtual_start >> offset_bits)+i);
         setBit(phy_bit_map, phy_candidate[i]);
         
         //printf("Page Maping: va=%lu, pa=%lu\n",va,pa);
     }
+    pthread_mutex_unlock(&mutex);
     /*
     virtual_start |= ((unsigned long)PHYMEM + phy_candidate[0]*PGSIZE) & ((1<<offset_bits)-1);
     */
@@ -296,10 +321,10 @@ void myfree(void *va, int size) {
     //Free the page table entries starting from this virtual address (va)
     // Also mark the pages free in the bitmap
     //Only free if the memory from "va" to va+size is valid
-    unsigned long* pa = (unsigned long*)Translate(PGD, va);
+    //unsigned long* pa = (unsigned long*)Translate(PGD, va);
     int num_pages = size/PGSIZE;
     if(size%PGSIZE > 0) num_pages++;
-    
+    /*
     for(int i=0;i<frame_num;i++){
         if((unsigned long)PHYMEM + i*1024 == (unsigned long)pa){
             for(int j=0;j<num_pages;j++){
@@ -307,11 +332,28 @@ void myfree(void *va, int size) {
             }
         }
     }
-    
+    */
+
     unsigned long index = (unsigned long)va >> offset_bits;
+    unsigned long v = (unsigned long)va;
+    
+    pthread_mutex_lock(&mutex);
     for(int j=0;j<num_pages;j++){
-        removeBit(vir_bit_map, index+j);
+        unsigned long* pa = (unsigned long*)Translate(PGD, v + j*PGSIZE);
+        unsigned long p_index = ((unsigned long)pa - (unsigned long)PHYMEM) >> offset_bits;
+        
+        removeBit(vir_bit_map, index);
+        removeBit(phy_bit_map, p_index);
+        
+        unsigned long pt_t = index & ((1<<pt_bits)-1);
+        unsigned long pd_t = index >> pt_bits;
+        
+        PGD[pd_t][pt_t] = NULL;
+        
+        index++;
     }
+    pthread_mutex_unlock(&mutex);
+    
 }
 
 
@@ -325,7 +367,8 @@ void PutVal(void *va, void *val, int size) {
        than one page. Therefore, you may have to find multiple pages using Translate()
        function.*/
     //printf("Translation pa: %lu\n", (unsigned long)Translate(PGD, va));
-    unsigned long va_offset = va & ((1<<offset_bits)-1);
+    unsigned long va_offset = (unsigned long)va & ((1<<offset_bits)-1);
+    
     if ( PGSIZE -  va_offset >= size) {
         memcpy((unsigned long *)Translate(PGD, va), val, size);
         return;
@@ -363,7 +406,7 @@ void GetVal(void *va, void *val, int size) {
     "val" address. Assume you can access "val" directly by derefencing them.
     If you are implementing TLB,  always check first the presence of translation
     in TLB before proceeding forward */
-    unsigned long va_offset = va & ((1<<offset_bits)-1);
+    unsigned long va_offset = (unsigned long)va & ((1<<offset_bits)-1);
     if ( PGSIZE -  va_offset >= size) {
         memcpy(val, (unsigned long *)Translate(PGD, va), size);
         return;
