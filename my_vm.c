@@ -350,7 +350,7 @@ void myfree(void *va, int size) {
         
         PGD[pd_t][pt_t] = NULL;
         
-        index++;
+        //index++;
     }
     pthread_mutex_unlock(&mutex);
     
@@ -371,7 +371,6 @@ void PutVal(void *va, void *val, int size) {
     
     if ( PGSIZE -  va_offset >= size) {
         memcpy((unsigned long *)Translate(PGD, va), val, size);
-        return;
     } else {
         unsigned long starting_address_va = (unsigned long) va;
         unsigned long starting_address_val = (unsigned long) val;
@@ -388,14 +387,7 @@ void PutVal(void *va, void *val, int size) {
             starting_address_va = ((starting_address_va>> offset_bits) + 1) << offset_bits;
             memcpy((unsigned long *)Translate(PGD, starting_address_va), starting_address_val, size);
         }
-        return;
     }
-    
-//    if(va_offset + size >= PGSIZE){
-//
-//    }else{
-//        memcpy((unsigned long *)Translate(PGD, va), val, size);
-//    }
 }
 
 
@@ -409,7 +401,6 @@ void GetVal(void *va, void *val, int size) {
     unsigned long va_offset = (unsigned long)va & ((1<<offset_bits)-1);
     if ( PGSIZE -  va_offset >= size) {
         memcpy(val, (unsigned long *)Translate(PGD, va), size);
-        return;
     } else {
         unsigned long starting_address_va = (unsigned long) va;
         unsigned long starting_address_val = (unsigned long) val;
@@ -426,7 +417,6 @@ void GetVal(void *va, void *val, int size) {
             starting_address_va = ((starting_address_va>> offset_bits) + 1) << offset_bits;
             memcpy(starting_address_val, (unsigned long *)Translate(PGD, starting_address_va),size);
         }
-        return;
     }
 }
 
@@ -437,57 +427,53 @@ This function receives two matrices mat1 and mat2 as an argument with size
 argument representing the number of rows and columns. After performing matrix
 multiplication, copy the result to answer.
 */
-//void MatMult(void *a, void *b, int SIZE, void *c) {
-void MatMult(void *mat1, void *mat2, int size, void *answer) {
+void MatMult(void *a, void *b, int SIZE, void *c) {
+//void MatMult(void *mat1, void *mat2, int size, void *answer) {
     /* Hint: You will index as [i * size + j] where  "i, j" are the indices of the
     matrix accessed. Similar to the code in test.c, you will use GetVal() to
     load each element and perform multiplication. Take a look at test.c! In addition to
     getting the values from two matrices, you will perform multiplication and
     store the result to the "answer array"*/
-    
-    /*
+
     int address_a = 0, address_b = 0, address_c = 0;
-    int* temp_a = malloc(sizeof(int)), temp_b = malloc(sizeof(int));
+    int temp_a , temp_b ;
     for (int i = 0; i < SIZE; i++) {
         for (int j = 0; j < SIZE; j++) {
             int temp = 0;
             for (int t = 0; t < SIZE; t++) {
                 address_a = (unsigned int) a + ((i * SIZE * sizeof(int))) + (t * sizeof(int));
                 address_b = (unsigned int) b + ((t * SIZE * sizeof(int))) + (j * sizeof(int));
-                GetVal(address_a, temp_a, sizeof(int));
-                GetVal(address_b, temp_b, sizeof(int));
-                temp += (*temp_a) * (*temp_b);
+                GetVal(address_a, &temp_a, sizeof(int));
+                GetVal(address_b, &temp_b, sizeof(int));
+                temp += temp_a*temp_b;
             }
             address_c = (unsigned int) c + ((i * SIZE * sizeof(int))) + (j * sizeof(int));
-            PutVal(&temp, &address_c, sizeof(int));
-            //printf("%d ", y);
+            PutVal((void*) address_c, &temp, sizeof(int));
         }
-        //printf("\n");
     }
-     */
-    int sum = 0;
-        int m1 = 0, m2 = 0, ans = 0;
-        int a, b;
-        int i, j, k;
-        for(i = 0; i < size; i++ ){
-            for(j = 0; j < size; j++){
-                sum = 0;
-                for(k = 0; k < size; k++){
-                    /*Get address of next value in matrices*/
-                    m1 = (unsigned int)mat1 + ((i * size * sizeof(int)) + (k * sizeof(int)));
-                    m2 = (unsigned int)mat2 + ((k * size * sizeof(int)) + (j * sizeof(int)));
-                    /*Get value from address in matrices*/
-                    GetVal((void*)m1, &a, sizeof(int));
-                    GetVal((void*)m2, &b, sizeof(int));
-                    
-                    sum += a * b;
-                }
-                /*Get address of answer matrix*/
-                ans = (unsigned int)answer + ((i * size * sizeof(int)) + (j * sizeof(int)));
-                /*Store sum in answer matrix*/
-                PutVal((void*)ans, &sum, sizeof(int));
-            }
-        }
+
+//    int sum = 0;
+//        int m1 = 0, m2 = 0, ans = 0;
+//        int a, b;
+//        for(int i = 0; i < size; i++ ){
+//            for(int j = 0; j < size; j++){
+//                sum = 0;
+//                for(int k = 0; k < size; k++){
+//                    /*Get address of next value in matrices*/
+//                    m1 = (unsigned int)mat1 + ((i * size * sizeof(int)) + (k * sizeof(int)));
+//                    m2 = (unsigned int)mat2 + ((k * size * sizeof(int)) + (j * sizeof(int)));
+//                    /*Get value from address in matrices*/
+//                    GetVal((void*)m1, &a, sizeof(int));
+//                    GetVal((void*)m2, &b, sizeof(int));
+//
+//                    sum += a * b;
+//                }
+//                /*Get address of answer matrix*/
+//                ans = (unsigned int)answer + ((i * size * sizeof(int)) + (j * sizeof(int)));
+//                /*Store sum in answer matrix*/
+//                PutVal((void*)ans, &sum, sizeof(int));
+//            }
+//        }
 
 }
 
