@@ -14,6 +14,9 @@ unsigned long pd_bits;
 
 unsigned long pt_size; //number of entries in each pageTable
 unsigned long pd_size;
+
+pthread_mutex_t mytex;
+
 /*
 Function responsible for allocating and setting your physical memory
 */
@@ -320,7 +323,31 @@ void PutVal(void *va, void *val, int size) {
        than one page. Therefore, you may have to find multiple pages using Translate()
        function.*/
     //printf("Translation pa: %lu\n", (unsigned long)Translate(PGD, va));
-    memcpy((unsigned long *)Translate(PGD, va), val, size);
+    unsigned long va_offset = va & ((1<<offset_bits)-1);
+    if ( PGSIZE -  va_offset >= size) {
+        memcpy((unsigned long *)Translate(PGD, va), val, size);
+        return;
+    } else {
+        memcpy((unsigned long *)Translate(PGD, va), val, PGSIZE -  va_offset);
+        size -= PGSIZE -  va_offset;
+        
+        while (size >= PGSIZE) {
+            va = (va>> offset_bits + 1) << offset_bits;
+            memcpy((unsigned long *)Translate(PGD, va), val, PGSIZE);
+            size -= PGSIZE;
+        }
+        if (size > 0) {
+            va = (va>> offset_bits + 1) << offset_bits;
+            memcpy((unsigned long *)Translate(PGD, va), val, size);
+        }
+        return;
+    }
+    
+//    if(va_offset + size >= PGSIZE){
+//
+//    }else{
+//        memcpy((unsigned long *)Translate(PGD, va), val, size);
+//    }
 }
 
 
@@ -331,8 +358,26 @@ void GetVal(void *va, void *val, int size) {
     "val" address. Assume you can access "val" directly by derefencing them.
     If you are implementing TLB,  always check first the presence of translation
     in TLB before proceeding forward */
-
-    memcpy(val, (unsigned long *)Translate(PGD, va), size);
+    unsigned long va_offset = va & ((1<<offset_bits)-1);
+    if ( PGSIZE -  va_offset >= size) {
+        memcpy(val, (unsigned long *)Translate(PGD, va), size);
+        return;
+    } else {
+        memcpy(val, (unsigned long *)Translate(PGD, va), PGSIZE -  va_offset);
+        size -= PGSIZE -  va_offset;
+        val += PGSIZE -  va_offset;
+        while (size >= PGSIZE) {
+            va = (va>> offset_bits + 1) << offset_bits;
+            memcpy(val, (unsigned long *)Translate(PGD, va), PGSIZE);
+            val += PGSIZE;
+            size -= PGSIZE;
+        }
+        if (size > 0) {
+            va = (va>> offset_bits + 1) << offset_bits;
+            memcpy(val, (unsigned long *)Translate(PGD, va), size);
+        }
+        return;
+    }
 }
 
 

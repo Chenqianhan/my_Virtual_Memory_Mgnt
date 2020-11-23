@@ -6,6 +6,7 @@
 #include <math.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <pthread.h>
 
 //Assume the address space is 32 bits, so the max memory size is 4GB
 //Page size is 4KB
