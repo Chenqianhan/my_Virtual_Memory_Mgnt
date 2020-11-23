@@ -129,9 +129,10 @@ PageMap(pde_t *pgdir, void *va, void *pa)
     
     if(getBit(vir_bit_map, address) == 0){
         //---------------------
-        //PGD[pd_index][pt_index] = (void *)pa;
-        PGD[pd_index][pt_index] = ((unsigned long)pa >> offset_bits) << offset_bits;
-        setBit(vir_bit_map, address);
+        PGD[pd_index][pt_index] = (void *)pa;
+        
+        //PGD[pd_index][pt_index] = ((unsigned long)pa >> offset_bits) << offset_bits;
+        //setBit(vir_bit_map, address);
         return 1;
     }
     
@@ -182,6 +183,47 @@ void *get_next_avail_phy(int num_pages) {
     return NULL;
 }
 
+void *get_next_avail(int num_pages){
+    //unsigned long template = (1 << num_pages) - 1;
+    unsigned long virtual_start = 0;
+    int cnt = 0;
+    for(unsigned long i = 0; i<page_num; i++){
+        if(getBit(vir_bit_map, i) == 0) cnt++;
+        else{
+            cnt = 0;
+        }
+        
+        if(cnt == num_pages){
+            virtual_start = i;
+            break;
+        }
+        
+        if(i == page_num - num_pages){
+            return NULL;
+        }
+    }
+    
+    unsigned long* phy_candidate = malloc(num_pages * sizeof(unsigned long));
+    cnt = 0;
+    for(unsigned long i = 0; i<frame_num; i++){
+        if(getBit(phy_bit_map, i) == 0) phy_candidate[cnt++] = i;
+        
+        if(cnt == num_pages) break;
+        if(i == frame_num) return NULL;
+    }
+    
+    //virtual_start *= PGSIZE;
+    for(int i=0;i<num_pages;i++){
+        unsigned long va = (virtual_start + i)*PGSIZE;
+        unsigned long pa = (unsigned long)PHYMEM + phy_candidate[i]*PGSIZE;
+        if(PageMap(PGD, (void *)va, (void*)pa) == 0) return NULL;
+        setBit(vir_bit_map, virtual_start+i);
+        setBit(phy_bit_map, phy_candidate[i]);
+    }
+    
+    return virtual_start;
+}
+
 /* Function responsible for allocating pages
 and used by the benchmark
 */
@@ -198,6 +240,18 @@ void *myalloc(unsigned int num_bytes) {
         isInit = 1;
     }
     
+    int num_pages = num_bytes/PGSIZE;
+    if(num_bytes%PGSIZE > 0) num_pages++;
+    
+    unsigned long va = get_next_avail(num_pages);
+    if(va == NULL){
+        //Not enough space
+        return NULL;
+    }
+    
+    return (void *)va;
+        
+    /*
     int num_pages = num_bytes/PGSIZE;
     if(num_bytes%PGSIZE > 0) num_pages++;
     
@@ -220,8 +274,7 @@ void *myalloc(unsigned int num_bytes) {
     va |= offset;
     
     if(PageMap(PGD, (unsigned long*)va, pa) == 0) return NULL;
-
-    return (unsigned long*)va;
+     */
 }
 
 /* Responsible for releasing one or more memory pages using virtual address (va)
