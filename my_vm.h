@@ -30,15 +30,21 @@ typedef pte_t* pde_t;
 #define TLB_SIZE 120
 
 //Structure to represents TLB
-/*
+
+struct tlbentry {
+    void *pa;
+    void *va;
+};
+
 struct tlb {
 
     //Assume your TLB is a direct mapped TLB of TBL_SIZE (entries)
     // You must also define wth TBL_SIZE in this file.
     //Assume each bucket to be 4 bytes
+    struct tlbentry entries[TLB_SIZE];
 };
 struct tlb tlb_store;
-*/
+
 
 void SetPhysicalMem(); //mmap -> size, (id, start address),
 pte_t* Translate(pde_t *pgdir, void *va);

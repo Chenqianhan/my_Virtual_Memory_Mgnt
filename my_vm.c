@@ -401,15 +401,16 @@ void removeBit(unsigned long *bit_map, unsigned long bit){
  * Feel free to extend the function arguments or return type.
  */
 /*Part 2 HINT: Add a virtual to physical page translation to the TLB */
-/*
+
 int
 add_TLB(void *va, void *pa)
 {
+    tlb_store
 
 
     return -1;
 }
-*/
+
 
 /*
  * Part 2: Check TLB for a valid translation.
