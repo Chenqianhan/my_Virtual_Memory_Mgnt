@@ -13,5 +13,6 @@ my_vm.o: my_vm.h
 
 	$(CC) $(CFLAGS)  my_vm.c
 
+
 clean:
 	rm -rf *.o *.a
