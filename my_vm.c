@@ -33,7 +33,11 @@ double tlb_miss_cnt;
  */
 void SetPhysicalMem() {
 
+<<<<<<< Updated upstream
     //pthread_mutex_lock(&mutex);
+=======
+
+>>>>>>> Stashed changes
     //step 0
     offset_bits = (unsigned long)(log(PGSIZE)/log(2));
     pt_bits = (32 - offset_bits)/2;
@@ -64,7 +68,11 @@ void SetPhysicalMem() {
     //step 5 Initialize TLB
     TLB = malloc(sizeof(struct tlb));
     
+<<<<<<< Updated upstream
     //pthread_mutex_unlock(&mutex);
+=======
+
+>>>>>>> Stashed changes
 }
 
 /**
@@ -76,6 +84,7 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     //2nd-level-page table index using the virtual address.  Using the page
     //directory index and page table index get the physical address
     //Decode virtual address
+<<<<<<< Updated upstream
     //pthread_mutex_lock(&mutex);
     //If translation not successful
     unsigned long address = (unsigned long)va;
@@ -95,11 +104,27 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     
     //Check TLB first
     if(pa == NULL){
+=======
+    
+    pte_t *pa = check_TLB(va);
+    tlb_search_cnt++;
+    
+    if(tlb_search_cnt == LDBL_MAX){
+        tlb_search_cnt = 0;
+        tlb_miss_cnt = 0;
+    }
+    
+    //Check TLB first
+    
+    if(pa == NULL){
+        unsigned long address = (unsigned long)va;
+>>>>>>> Stashed changes
         unsigned long offset = address & ((1 << offset_bits)-1);
         address = address >> offset_bits;
         unsigned long pt_index = address & ((1<< pt_bits)-1);
         unsigned long pd_index = address >> pt_bits;
         
+<<<<<<< Updated upstream
         pa = (unsigned long)pgdir[pd_index][pt_index] + offset;
         
         add_TLB(va, pa);
@@ -112,6 +137,30 @@ pte_t * Translate(pde_t *pgdir, void *va) {
         //pthread_mutex_unlock(&mutex);
         return pa;
     }
+=======
+        //If translation not successful
+        if(getBit(vir_bit_map, address) == 0){
+            //printf("No such bit for this va");
+            pthread_mutex_unlock(&mutex);
+            return NULL;
+        }
+        
+        pa = (unsigned long)pgdir[pd_index][pt_index] + offset;
+        //printf("We call add_TLB by va%lu, pa%lu\n", (unsigned long)va, (unsigned long)pa);
+        add_TLB(va, pa);
+        //pa += offset;
+        tlb_miss_cnt++;
+        //printf("Using Dir translate %lu to %lu\n", (unsigned long)va, (unsigned long)pa);
+
+        return (pte_t *)pa;
+        
+    }else{
+	
+	//printf("Using TLB translate %lu to %lu\n", (unsigned long)va, (unsigned long)pa);
+        return pa;
+    }
+    
+>>>>>>> Stashed changes
 }
 
 /**
@@ -134,7 +183,10 @@ PageMap(pde_t *pgdir, void *va, void *pa)
     unsigned long pt_index = address & ((1<< pt_bits)-1);
     unsigned long pd_index = address >> pt_bits;
     
+<<<<<<< Updated upstream
     //pthread_mutex_lock(&mutex);
+=======
+>>>>>>> Stashed changes
     if(PGD[pd_index] == NULL){
         PGD[pd_index] = (pte_t *)malloc(pt_size * sizeof(pte_t));
     }
@@ -144,7 +196,11 @@ PageMap(pde_t *pgdir, void *va, void *pa)
         pthread_mutex_unlock(&mutex);
         return 1;
     }
+<<<<<<< Updated upstream
     //pthread_mutex_unlock(&mutex);
+=======
+
+>>>>>>> Stashed changes
     //If the virtual address that va point to is already used to map physical map, we return 0;
 
     return 0;
@@ -162,7 +218,6 @@ void *get_next_avail(int num_pages){
     //unsigned long template = (1 << num_pages) - 1;
     unsigned long virtual_start = 0;
     int cnt = 0;
-    pthread_mutex_lock(&mutex);
     
     for(unsigned long i = 0; i<page_num; i++){
         if(getBit(vir_bit_map, i) == 0) cnt++;
@@ -176,7 +231,6 @@ void *get_next_avail(int num_pages){
         }
         
         if(i == page_num - num_pages){
-            pthread_mutex_unlock(&mutex);
             return NULL;
         }
     }
@@ -188,7 +242,6 @@ void *get_next_avail(int num_pages){
         
         if(cnt == num_pages) break;
         if(i == frame_num){
-            pthread_mutex_unlock(&mutex);
             return NULL;
         }
     }
@@ -198,14 +251,14 @@ void *get_next_avail(int num_pages){
         unsigned long va = virtual_start + i*PGSIZE;
         unsigned long pa = (unsigned long)PHYMEM + phy_candidate[i]*PGSIZE;
         if(PageMap(PGD, (void *)va, (void*)pa) == 0){
-            pthread_mutex_unlock(&mutex);
+
             return NULL;
         }
         setBit(vir_bit_map, (virtual_start >> offset_bits)+i);
         setBit(phy_bit_map, phy_candidate[i]);
         //printf("Page Maping: va=%lu, pa=%lu\n",va,pa);
     }
-    pthread_mutex_unlock(&mutex);
+
 
     return virtual_start;
 }
@@ -373,6 +426,10 @@ void MatMult(void *a, void *b, int SIZE, void *c) {
     load each element and perform multiplication. Take a look at test.c! In addition to
     getting the values from two matrices, you will perform multiplication and
     store the result to the "answer array"*/
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
     int address_a = 0, address_b = 0, address_c = 0;
     int temp_a , temp_b ;
     for (int i = 0; i < SIZE; i++) {
@@ -389,6 +446,10 @@ void MatMult(void *a, void *b, int SIZE, void *c) {
             PutVal((void*) address_c, &temp, sizeof(int));
         }
     }
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 }
 
 // (virtual_address - 0)/PGSIZE = THE FIRST (32 - OFFSETS_BITS)
@@ -435,13 +496,24 @@ add_TLB(void *target_va, void *target_pa)
     //static int size;
 
     unsigned long offset = (unsigned long)target_va & ((1<<offset_bits)-1);
+<<<<<<< Updated upstream
     target_va = (void *)(((unsigned long)target_va >> offset_bits) << offset_bits);
     
+=======
+    //printf("When adding, PHYMEM is %lu, va is %lu, offset is %lu, origin pa is %lu\n", (unsigned long)PHYMEM, (unsigned long)target_va, (unsigned long)offset, (unsigned long)target_pa);
+    target_va = (void *)(((unsigned long)target_va >> offset_bits) << offset_bits);
+    //printf("When adding, PHYMEM is %lu, va is %lu, offset is %lu, origin pa is %lu\n", (unsigned long)PHYMEM, (unsigned long)target_va, (unsigned long)offset, (unsigned long)target_pa);
+>>>>>>> Stashed changes
     target_pa = (void *)((unsigned long)target_pa - offset);
     
     TLB->entries[head].va = target_va;
     TLB->entries[head].pa = target_pa;
     head = (head+1) % TLB_SIZE;
+<<<<<<< Updated upstream
+=======
+    //printf("add entry %lu -- %lu\n", (unsigned long)TLB->entries[head].va,(unsigned long)TLB->entries[head].pa);
+    //printf("Head is %d",head);
+>>>>>>> Stashed changes
     /*
     if(size < TLB_SIZE){
         
@@ -468,6 +540,7 @@ pte_t *
 check_TLB(void *target_va) {
     //printf("Checking TLB");
     unsigned long offset = (unsigned long)target_va & ((1<<offset_bits)-1);
+<<<<<<< Updated upstream
     target_va = (void *)(((unsigned long)target_va >> offset_bits) << offset_bits) ;
     
     for(int i=0;i<TLB_SIZE;i++){
@@ -477,6 +550,17 @@ check_TLB(void *target_va) {
         return (pte_t *)output;
     }
     
+=======
+    target_va = (void*)(((unsigned long)target_va >> offset_bits) << offset_bits);
+    
+    for(int i=0;i<TLB_SIZE;i++){
+        if(TLB->entries[i].va != NULL && TLB->entries[i].va == target_va ){
+        	unsigned long output = (unsigned long)TLB->entries[i].pa + offset;
+        	//printf("----------------suc\n");
+		return (pte_t *)output;
+	}
+    }
+>>>>>>> Stashed changes
     return NULL;
 }
 
