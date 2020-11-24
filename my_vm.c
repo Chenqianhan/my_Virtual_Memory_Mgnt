@@ -110,6 +110,7 @@ pte_t * Translate(pde_t *pgdir, void *va) {
         return (pte_t *)pa;
         
     }else{
+        pthread_mutex_unlock(&mutex);
         return pa;
     }
 }
