@@ -171,7 +171,7 @@ void *get_next_avail(int num_pages){
         }
         
         if(cnt == num_pages){
-            virtual_start = i;
+            virtual_start = i - num_pages + 1;
             break;
         }
         
@@ -277,6 +277,7 @@ void myfree(void *va, int size) {
         unsigned long pt_t = index & ((1<<pt_bits)-1);
         unsigned long pd_t = index >> pt_bits;
         
+        index++;
         PGD[pd_t][pt_t] = NULL;
     }
     pthread_mutex_unlock(&mutex);
