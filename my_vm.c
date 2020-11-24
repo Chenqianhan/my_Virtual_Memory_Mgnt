@@ -77,7 +77,7 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     unsigned long pd_index = address >> pt_bits;
     
     pthread_mutex_lock(&mutex);
-    //If translation not successfull
+    //If translation not successful
     if(getBit(vir_bit_map, address) == 0){
         //printf("No such bit for this va");
         pthread_mutex_unlock(&mutex);
@@ -188,12 +188,18 @@ void *get_next_avail(int num_pages){
 /**
  * Function responsible for allocating pages
  * and used by the benchmark
+ * 1. If the lock is not initialised, initialise it here
+ * 2. SetPhysicalMem if hasn't done so
+ * 3. Allocate enough pages according to num_bytes. All allocations are at a page granularity
+ * 4. If failed to find enough pages then return NULL. Else, return the starting virtual address of the first virtual page.
  */
 void *myalloc(unsigned int num_bytes) {
    /* HINT: If the page directory is not initialized, then initialize the
    page directory. Next, using get_next_avail(), check if there are free pages. If
    free pages are available, set the bitmaps and map a new page. Note, you will
    have to mark which physical pages are used. */
+
+    //##### SideNode: Our page directory is initialized in SetPhysicalMem() function.
     if(pthread_mutex_init(&mutex, NULL) != 0){
         printf("Error initializing mutex: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
@@ -219,9 +225,10 @@ void *myalloc(unsigned int num_bytes) {
 
 /**
  * Responsible for releasing one or more memory pages using virtual address (va)
- * 1. remove corresponding bits in virtual bitmap
- * 2. remove corresponding bits in physical bitmap
+ * 1. unmark corresponding bits in virtual bitmap
+ * 2. unmark corresponding bits in physical bitmap
  * 3. remove the mappings of each virtual page to the corresponding physical page frame
+ *    i.e. set PGD[pd_t][pt_t] to NULL.
  */
 void myfree(void *va, int size) {
 
@@ -329,9 +336,9 @@ void GetVal(void *va, void *val, int size) {
 
 
 /**
- * This function receives two matrices mat1 and mat2 as an argument with size
+ * This function receives two matrices a and b as an argument with size
  * argument representing the number of rows and columns. After performing matrix
- * multiplication, copy the result to answer.
+ * multiplication, copy the result to c.
  */
 void MatMult(void *a, void *b, int SIZE, void *c) {
 //void MatMult(void *mat1, void *mat2, int size, void *answer) {

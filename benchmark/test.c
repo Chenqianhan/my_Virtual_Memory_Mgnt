@@ -61,7 +61,6 @@ int main() {
     myfree(a, 100*4);
     myfree(b, 100*4);
     myfree(c, 100*4);
-
     printf("Checking if allocations were freed!\n");
     a = myalloc(100*4);
     if ((int)a == old_a)
