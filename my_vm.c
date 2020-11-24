@@ -78,6 +78,7 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     //Decode virtual address
     //pthread_mutex_lock(&mutex);
     //If translation not successful
+    unsigned long address = (unsigned long)va;
     if(getBit(vir_bit_map, address) == 0){
         //printf("No such bit for this va");
         pthread_mutex_unlock(&mutex);
@@ -94,7 +95,6 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     
     //Check TLB first
     if(pa == NULL){
-        unsigned long address = (unsigned long)va;
         unsigned long offset = address & ((1 << offset_bits)-1);
         address = address >> offset_bits;
         unsigned long pt_index = address & ((1<< pt_bits)-1);
