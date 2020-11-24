@@ -79,6 +79,7 @@ int main() {
 
     printf("Performing matrix multiplication with itself!\n");
     MatMult(a, b, SIZE, c);
+    print_TLB_missrate();
 
 
     for (i = 0; i < SIZE; i++) {
@@ -93,7 +94,6 @@ int main() {
     myfree(a, 100*4);
     myfree(b, 100*4);
     myfree(c, 100*4);
-
     printf("Checking if allocations were freed!\n");
     a = myalloc(100*4);
     if ((int)a == old_a)

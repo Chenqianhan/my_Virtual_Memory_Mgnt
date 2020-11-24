@@ -8,13 +8,14 @@
 #include <sys/mman.h>
 #include <pthread.h>
 #include <errno.h>
+#include <float.h>
 
 //Assume the address space is 32 bits, so the max memory size is 4GB
 //Page size is 4KB
 
 //Add any important includes here which you may need
 
-#define PGSIZE 4096
+#define PGSIZE 4
 
 // Maximum size of your memory
 #define MAX_MEMSIZE 4ULL*1024*1024*1024 //4GB
@@ -30,15 +31,21 @@ typedef pte_t* pde_t;
 #define TLB_SIZE 120
 
 //Structure to represents TLB
-/*
+
+struct tlbentry {
+    void *pa;
+    void *va;
+};
+
 struct tlb {
 
     //Assume your TLB is a direct mapped TLB of TBL_SIZE (entries)
     // You must also define wth TBL_SIZE in this file.
     //Assume each bucket to be 4 bytes
+    struct tlbentry entries[TLB_SIZE];
 };
 struct tlb tlb_store;
-*/
+
 
 void SetPhysicalMem(); //mmap -> size, (id, start address),
 pte_t* Translate(pde_t *pgdir, void *va);
@@ -49,8 +56,8 @@ void PutVal(void *va, void *val, int size);
 void GetVal(void *va, void *val, int size);
 void MatMult(void *mat1, void *mat2, int size, void *answer);
 void print_TLB_missrate();
-bool check_in_tlb(void *va);
-void put_in_tlb(void *va, void *pa);
+pte_t* check_TLB(void *target_va);
+int add_TLB(void *target_va, void *target_pa);
 
 void setBit(unsigned long *bit_map, unsigned long bit);
 unsigned long getBit(unsigned long *bit_map, unsigned long bit);
