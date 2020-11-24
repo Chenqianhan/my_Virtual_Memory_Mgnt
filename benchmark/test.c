@@ -47,6 +47,7 @@ int main() {
 
     printf("Performing matrix multiplication with itself!\n");
     MatMult(a, b, SIZE, c);
+    print_TLB_missrate();
 
 
     for (i = 0; i < SIZE; i++) {

@@ -16,7 +16,9 @@ unsigned long pt_size; //= 1 << pt_bits number of entries in each pageTable
 unsigned long pd_size;// = 1 << pd_bits
 
 pthread_mutex_t mutex;
-
+struct tlb *TLB;
+double tlb_search_cnt;
+double tlb_miss_cnt;
 /**
  * Function responsible for allocating and setting your physical memory
  * 0. calculate values like pt_bits, pd_bits etc
@@ -52,12 +54,16 @@ void SetPhysicalMem() {
     frame_num = (unsigned long)(MEMSIZE/PGSIZE);
     //since malloc use byte as input, so we need to divide 8;
     phy_bit_map = (unsigned long *)malloc(frame_num/8);
-
+    
     //step 4
     PGD = (pde_t **)malloc(pd_size * sizeof(pde_t));
     for(unsigned long i=0;i<pd_size;i++){
         PGD[i] = NULL;
     }
+    
+    //step 5 Initialize TLB
+    TLB = malloc(sizeof(struct tlb));
+    
     pthread_mutex_unlock(&mutex);
 }
 
@@ -70,23 +76,42 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     //2nd-level-page table index using the virtual address.  Using the page
     //directory index and page table index get the physical address
     //Decode virtual address
-    unsigned long address = (unsigned long)va;
-    unsigned long offset = address & ((1 << offset_bits)-1);
-    address = address >> offset_bits;
-    unsigned long pt_index = address & ((1<< pt_bits)-1);
-    unsigned long pd_index = address >> pt_bits;
-    
     pthread_mutex_lock(&mutex);
-    //If translation not successful
-    if(getBit(vir_bit_map, address) == 0){
-        //printf("No such bit for this va");
-        pthread_mutex_unlock(&mutex);
-        return NULL;
+    
+    pte_t *pa = check_TLB(va);
+    tlb_search_cnt++;
+    
+    if(tlb_search_cnt == LDBL_MAX){
+        tlb_search_cnt = 0;
+        tlb_miss_cnt = 0;
     }
-    unsigned long pa = (unsigned long)pgdir[pd_index][pt_index];
-    pa += offset;
-    pthread_mutex_unlock(&mutex);
-    return (pte_t *)pa;
+    
+    //Check TLB first
+    if(pa == NULL){
+        unsigned long address = (unsigned long)va;
+        unsigned long offset = address & ((1 << offset_bits)-1);
+        address = address >> offset_bits;
+        unsigned long pt_index = address & ((1<< pt_bits)-1);
+        unsigned long pd_index = address >> pt_bits;
+        
+        //If translation not successful
+        if(getBit(vir_bit_map, address) == 0){
+            //printf("No such bit for this va");
+            pthread_mutex_unlock(&mutex);
+            return NULL;
+        }
+        
+        pa = (unsigned long)pgdir[pd_index][pt_index];
+        pa += offset;
+        add_TLB(va, pa);
+        tlb_miss_cnt++;
+        
+        pthread_mutex_unlock(&mutex);
+        return (pte_t *)pa;
+        
+    }else{
+        return pa;
+    }
 }
 
 /**
@@ -387,6 +412,7 @@ unsigned long getBit(unsigned long *bit_map, unsigned long bit){
     pthread_mutex_unlock(&mutex);
     return bit_map[frame] & (1 << offset);
 }
+
 //here bit means the index of the pages that need to be unmarked, like the first page, the second page ..etc
 void removeBit(unsigned long *bit_map, unsigned long bit){
     pthread_mutex_lock(&mutex);
@@ -403,10 +429,29 @@ void removeBit(unsigned long *bit_map, unsigned long bit){
 /*Part 2 HINT: Add a virtual to physical page translation to the TLB */
 
 int
-add_TLB(void *va, void *pa)
+add_TLB(void *target_va, void *target_pa)
 {
-    tlb_store
+    //printf("adding TLB");
+    static int head;
+    //static int size;
 
+    unsigned long offset = (unsigned long)target_va & ((1<<offset_bits)-1);
+    target_va = ((unsigned long)target_va >> offset_bits) << offset_bits;
+    target_pa = (void *)((unsigned long)target_pa - offset);
+    
+    TLB->entries[head].va = target_va;
+    TLB->entries[head].pa = target_pa;
+    head = (head+1) % TLB_SIZE;
+    /*
+    if(size < TLB_SIZE){
+        
+        size++;
+    }else{
+        TLB.entries[head]->va = target_va;
+        TLB.entries[head]->pa = target_pa;
+        head = (head+1) % TLB_SIZE;
+    }
+    */
 
     return -1;
 }
@@ -418,14 +463,23 @@ add_TLB(void *va, void *pa)
  * Feel free to extend this function and change the return type.
  */
 /* Part 2: TLB lookup code here */
-/*
+
 pte_t *
-check_TLB(void *va) {
-
+check_TLB(void *target_va) {
+    //printf("Checking TLB");
+    unsigned long offset = (unsigned long)target_va & ((1<<offset_bits)-1);
+    target_va = ((unsigned long)target_va >> offset_bits) << offset_bits;
     
-
+    for(int i=0;i<TLB_SIZE;i++){
+        if(TLB->entries[i].va == NULL || TLB->entries[i].va != target_va) continue;
+        
+        unsigned long output = (unsigned long)TLB->entries[i].pa + offset;
+        return (pte_t *)output;
+    }
+    
+    return NULL;
 }
-*/
+
 
 /*
  * Part 2: Print TLB miss rate.
@@ -433,17 +487,13 @@ check_TLB(void *va) {
  */
 
 /*Part 2 Code here to calculate and print the TLB miss rate*/
-/*
+
 void
 print_TLB_missrate()
 {
     double miss_rate = 0;
-
+    miss_rate = tlb_miss_cnt/tlb_search_cnt;
     
-
-
-
-
     fprintf(stderr, "TLB miss rate %lf \n", miss_rate);
 }
-*/
+

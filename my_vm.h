@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include <pthread.h>
 #include <errno.h>
+#include <float.h>
 
 //Assume the address space is 32 bits, so the max memory size is 4GB
 //Page size is 4KB
@@ -55,8 +56,8 @@ void PutVal(void *va, void *val, int size);
 void GetVal(void *va, void *val, int size);
 void MatMult(void *mat1, void *mat2, int size, void *answer);
 void print_TLB_missrate();
-bool check_in_tlb(void *va);
-void put_in_tlb(void *va, void *pa);
+pte_t* check_TLB(void *target_va);
+int add_TLB(void *target_va, void *target_pa);
 
 void setBit(unsigned long *bit_map, unsigned long bit);
 unsigned long getBit(unsigned long *bit_map, unsigned long bit);
