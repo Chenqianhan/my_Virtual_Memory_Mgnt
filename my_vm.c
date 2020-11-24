@@ -77,6 +77,12 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     //directory index and page table index get the physical address
     //Decode virtual address
     pthread_mutex_lock(&mutex);
+    //If translation not successful
+    if(getBit(vir_bit_map, address) == 0){
+        //printf("No such bit for this va");
+        pthread_mutex_unlock(&mutex);
+        return NULL;
+    }
     
     pte_t *pa = check_TLB(va);
     tlb_search_cnt++;
@@ -94,15 +100,8 @@ pte_t * Translate(pde_t *pgdir, void *va) {
         unsigned long pt_index = address & ((1<< pt_bits)-1);
         unsigned long pd_index = address >> pt_bits;
         
-        //If translation not successful
-        if(getBit(vir_bit_map, address) == 0){
-            //printf("No such bit for this va");
-            pthread_mutex_unlock(&mutex);
-            return NULL;
-        }
+        pa = (unsigned long)pgdir[pd_index][pt_index] + offset;
         
-        pa = (unsigned long)pgdir[pd_index][pt_index];
-        pa += offset;
         add_TLB(va, pa);
         tlb_miss_cnt++;
         
@@ -437,7 +436,8 @@ add_TLB(void *target_va, void *target_pa)
     //static int size;
 
     unsigned long offset = (unsigned long)target_va & ((1<<offset_bits)-1);
-    target_va = ((unsigned long)target_va >> offset_bits) << offset_bits;
+    target_va = (void *)(((unsigned long)target_va >> offset_bits) << offset_bits);
+    
     target_pa = (void *)((unsigned long)target_pa - offset);
     
     TLB->entries[head].va = target_va;
@@ -469,7 +469,7 @@ pte_t *
 check_TLB(void *target_va) {
     //printf("Checking TLB");
     unsigned long offset = (unsigned long)target_va & ((1<<offset_bits)-1);
-    target_va = ((unsigned long)target_va >> offset_bits) << offset_bits;
+    target_va = (void *)(((unsigned long)target_va >> offset_bits) << offset_bits) ;
     
     for(int i=0;i<TLB_SIZE;i++){
         if(TLB->entries[i].va == NULL || TLB->entries[i].va != target_va) continue;
