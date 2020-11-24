@@ -33,7 +33,7 @@ double tlb_miss_cnt;
  */
 void SetPhysicalMem() {
 
-    pthread_mutex_lock(&mutex);
+    //pthread_mutex_lock(&mutex);
     //step 0
     offset_bits = (unsigned long)(log(PGSIZE)/log(2));
     pt_bits = (32 - offset_bits)/2;
@@ -64,7 +64,7 @@ void SetPhysicalMem() {
     //step 5 Initialize TLB
     TLB = malloc(sizeof(struct tlb));
     
-    pthread_mutex_unlock(&mutex);
+    //pthread_mutex_unlock(&mutex);
 }
 
 /**
@@ -76,7 +76,7 @@ pte_t * Translate(pde_t *pgdir, void *va) {
     //2nd-level-page table index using the virtual address.  Using the page
     //directory index and page table index get the physical address
     //Decode virtual address
-    pthread_mutex_lock(&mutex);
+    //pthread_mutex_lock(&mutex);
     //If translation not successful
     if(getBit(vir_bit_map, address) == 0){
         //printf("No such bit for this va");
@@ -105,11 +105,11 @@ pte_t * Translate(pde_t *pgdir, void *va) {
         add_TLB(va, pa);
         tlb_miss_cnt++;
         
-        pthread_mutex_unlock(&mutex);
+        //pthread_mutex_unlock(&mutex);
         return (pte_t *)pa;
         
     }else{
-        pthread_mutex_unlock(&mutex);
+        //pthread_mutex_unlock(&mutex);
         return pa;
     }
 }
@@ -134,7 +134,7 @@ PageMap(pde_t *pgdir, void *va, void *pa)
     unsigned long pt_index = address & ((1<< pt_bits)-1);
     unsigned long pd_index = address >> pt_bits;
     
-    pthread_mutex_lock(&mutex);
+    //pthread_mutex_lock(&mutex);
     if(PGD[pd_index] == NULL){
         PGD[pd_index] = (pte_t *)malloc(pt_size * sizeof(pte_t));
     }
@@ -144,7 +144,7 @@ PageMap(pde_t *pgdir, void *va, void *pa)
         pthread_mutex_unlock(&mutex);
         return 1;
     }
-    pthread_mutex_unlock(&mutex);
+    //pthread_mutex_unlock(&mutex);
     //If the virtual address that va point to is already used to map physical map, we return 0;
 
     return 0;
@@ -372,7 +372,6 @@ void MatMult(void *a, void *b, int SIZE, void *c) {
     load each element and perform multiplication. Take a look at test.c! In addition to
     getting the values from two matrices, you will perform multiplication and
     store the result to the "answer array"*/
-    pthread_mutex_lock(&mutex);
     int address_a = 0, address_b = 0, address_c = 0;
     int temp_a , temp_b ;
     for (int i = 0; i < SIZE; i++) {
@@ -389,37 +388,36 @@ void MatMult(void *a, void *b, int SIZE, void *c) {
             PutVal((void*) address_c, &temp, sizeof(int));
         }
     }
-    pthread_mutex_unlock(&mutex);
 }
 
 // (virtual_address - 0)/PGSIZE = THE FIRST (32 - OFFSETS_BITS)
 //here bit means the index of the pages that need to be marked, like the first page, the second page ..etc
 void setBit(unsigned long *bit_map, unsigned long bit){
-    pthread_mutex_lock(&mutex);
+
     unsigned long offset = bit%32;
     unsigned long frame = bit/32;
     bit_map[frame] |= 1 << offset;
-    pthread_mutex_unlock(&mutex);
+
 
 }
 
 // (physical_address - physical_starting)/PGSIZE
 //here bit means the index of the pages that need to see whether marked, like the first page, the second page ..etc
 unsigned long getBit(unsigned long *bit_map, unsigned long bit){
-    pthread_mutex_lock(&mutex);
+
     unsigned long offset = bit%32;
     unsigned long frame = bit/32;
-    pthread_mutex_unlock(&mutex);
+
     return bit_map[frame] & (1 << offset);
 }
 
 //here bit means the index of the pages that need to be unmarked, like the first page, the second page ..etc
 void removeBit(unsigned long *bit_map, unsigned long bit){
-    pthread_mutex_lock(&mutex);
+
     unsigned long offset = bit%32;
     unsigned long frame = bit/32;
     bit_map[frame] &= ~(1 << offset);
-    pthread_mutex_unlock(&mutex);
+
 }
 
 /*
